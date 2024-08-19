@@ -1,4 +1,6 @@
 from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.urls import reverse
 
@@ -17,12 +19,18 @@ class Tag(BaseModel):
         verbose_name = "Тэг"
         verbose_name_plural = "Тэги"
 
-
-
 class Article(BaseModel):
     title = models.CharField(max_length=50, null=False, blank=False, verbose_name="Название")
     content = models.TextField(null=False, blank=False, verbose_name="Контент")
     status = models.CharField(max_length=20, choices=statuses, verbose_name="Статус", default=statuses[0][0])
+
+    def likes_count(self):
+        content_type = ContentType.objects.get_for_model(self)
+        return Like.objects.filter(content_type=content_type, object_id=self.id).count()
+
+    def is_liked_by_user(self, user):
+        content_type = ContentType.objects.get_for_model(self)
+        return Like.objects.filter(content_type=content_type, object_id=self.id, user=user).exists()
 
     author = models.ForeignKey(
         get_user_model(),
@@ -68,6 +76,13 @@ class Comment(BaseModel):
                                 verbose_name='Статья')
     text = models.TextField(max_length=400, verbose_name='Комментарий')
 
+    def likes_count(self):
+        content_type = ContentType.objects.get_for_model(self)
+        return Like.objects.filter(content_type=content_type, object_id=self.id).count()
+
+    def is_liked_by_user(self, user):
+        content_type = ContentType.objects.get_for_model(self)
+        return Like.objects.filter(content_type=content_type, object_id=self.id, user=user).exists()
     author = models.ForeignKey(
         get_user_model(),
         related_name="comments",
@@ -82,3 +97,14 @@ class Comment(BaseModel):
         db_table = "comments"
         verbose_name = "Комментарий"
         verbose_name_plural = "Комментарии"
+
+
+class Like(models.Model):
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE, related_name='likes')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id')
