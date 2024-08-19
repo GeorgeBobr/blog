@@ -13,14 +13,11 @@ from webapp.models import Article
 
 
 class ArticleListView(ListView):
-    # queryset = Article.objects.filter(title__contains="Стат")
     model = Article
     template_name = "articles/index.html"
     ordering = ['-created_at']
     context_object_name = "articles"
     paginate_by = 5
-
-    # paginate_orphans = 2
 
     def dispatch(self, request, *args, **kwargs):
         print(request.user.is_authenticated, "is_authenticated")
@@ -84,7 +81,6 @@ class UpdateArticleView(PermissionRequiredMixin, UpdateView):
     permission_required = "webapp.change_article"
 
     def has_permission(self):
-        # return self.request.user.groups.filter(name="moderators").exists()
         return super().has_permission() or self.request.user == self.get_object().author
 
 
